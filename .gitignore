@@ -1,3 +1,4 @@
 .vscode/settings.json
 exports
 auto_save
+*.class

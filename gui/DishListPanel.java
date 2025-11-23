@@ -6,6 +6,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -25,29 +26,34 @@ public class DishListPanel extends JPanel {
   private final DefaultTableModel tableModel;
 
   /**
-   * Создает панель списка блюд с указанным контроллером.
+   * Конструктор для создания панели управления списком избранных блюд.
    */
   public DishListPanel(MenuController controller) {
     this.controller = controller;
     setLayout(new BorderLayout());
     setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-    tableModel = new DefaultTableModel(new String[] { "Название", "Описание", "Ингредиенты",
-        "Действия" }, 0) {
+    tableModel = new DefaultTableModel(new String[] {
+        "Название", "Описание", "Ингредиенты", "Редактировать", "Удалить"
+    }, 0) {
       @Override
       public boolean isCellEditable(int row, int column) {
-        return column == 3;
+        return column == 3 || column == 4;
       }
     };
 
     dishTable = new JTable(tableModel);
     dishTable.setRowHeight(30);
 
-    // Используем TableButtonHelper
-    TableColumn buttonColumn = dishTable.getColumnModel().getColumn(3);
-    buttonColumn.setCellRenderer(new TableButtonHelper.ButtonRenderer("Изменить"));
-    buttonColumn.setCellEditor(new TableButtonHelper.ButtonEditor(
-        new JCheckBox(), "Изменить", this::handleEditButtonClick));
+    TableColumn editColumn = dishTable.getColumnModel().getColumn(3);
+    editColumn.setCellRenderer(new TableButtonHelper.ButtonRenderer("Редактировать"));
+    editColumn.setCellEditor(new TableButtonHelper.ButtonEditor(
+        new JCheckBox(), "Редактировать", this::handleEditButtonClick));
+
+    TableColumn deleteColumn = dishTable.getColumnModel().getColumn(4);
+    deleteColumn.setCellRenderer(new TableButtonHelper.ButtonRenderer("Удалить"));
+    deleteColumn.setCellEditor(new TableButtonHelper.ButtonEditor(
+        new JCheckBox(), "Удалить", this::handleDeleteButtonClick));
 
     add(new JScrollPane(dishTable), BorderLayout.CENTER);
     add(createButtonPanel(), BorderLayout.NORTH);
@@ -66,10 +72,26 @@ public class DishListPanel extends JPanel {
     int row = dishTable.getSelectedRow();
     if (row >= 0) {
       String dishName = (String) dishTable.getValueAt(row, 0);
-      controller.getAllDishes().stream()
-          .filter(d -> d.getName().equals(dishName))
-          .findFirst()
-          .ifPresent(this::showEditDialog);
+      Dish existingDish = controller.findDishByName(dishName);
+      if (existingDish != null) {
+        showEditDialog(existingDish);
+      }
+    }
+  }
+
+  private void handleDeleteButtonClick() {
+    int row = dishTable.getSelectedRow();
+    if (row >= 0) {
+      String dishName = (String) dishTable.getValueAt(row, 0);
+      int result = JOptionPane.showConfirmDialog(this, // Убрали javax.swing.
+          "Удалить блюдо \"" + dishName + "\"?",
+          "Подтверждение удаления",
+          JOptionPane.YES_NO_OPTION);
+
+      if (result == JOptionPane.YES_OPTION) {
+        controller.removeDish(dishName);
+        refreshTable();
+      }
     }
   }
 
@@ -105,7 +127,8 @@ public class DishListPanel extends JPanel {
           dish.getName(),
           dish.getDescription(),
           ingredients.toString(),
-          "Изменить"
+          "Редактировать",
+          "Удалить"
       });
     });
   }

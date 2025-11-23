@@ -13,11 +13,25 @@ public class MenuController {
 
   public MenuController(MenuRepository repository) {
     this.repository = repository;
-    // Данные автоматически загружаются в конструкторе MenuRepository
+
   }
 
   public void addDish(Dish dish) {
     repository.addDish(dish);
+  }
+
+  public void updateDish(String oldName, Dish updatedDish) {
+    repository.updateDish(oldName, updatedDish);
+  }
+
+  /**
+   * Находит блюдо по имени.
+   */
+  public Dish findDishByName(String name) {
+    return repository.getAllDishes().stream()
+        .filter(d -> d.getName().equals(name))
+        .findFirst()
+        .orElse(null);
   }
 
   public void removeDish(String dishName) {
@@ -38,6 +52,10 @@ public class MenuController {
 
   public void addProduct(String product, double quantity) {
     repository.addProduct(product, quantity);
+  }
+
+  public void updateProduct(String product, double newQuantity) {
+    repository.updateProduct(product, newQuantity);
   }
 
   public void removeProduct(String product) {

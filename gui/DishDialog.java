@@ -12,12 +12,18 @@ import planner.ProductQuantity;
  * Позволяет задать название, описание и ингредиенты блюда.
  */
 public class DishDialog extends AbstractDishDialog {
+  private Dish existingDish;
+
   public DishDialog(Frame parent, MenuController controller) {
     super(parent, controller, "Добавить блюдо");
   }
 
+  /**
+   * Конструктор для создания диалогового окна редактирования существующего блюда.
+   */
   public DishDialog(Frame parent, MenuController controller, Dish dish) {
-    super(parent, controller, "Редактировать блюдо");
+    super(parent, controller, "Редактировать блюдо: " + dish.getName());
+    this.existingDish = dish;
     setDishData(dish);
   }
 
@@ -36,7 +42,13 @@ public class DishDialog extends AbstractDishDialog {
 
       Map<String, ProductQuantity> ingredients = getIngredientsFromModel();
       Dish dish = new Dish(name, description, ingredients);
-      controller.addDish(dish);
+
+      if (existingDish != null) {
+        controller.updateDish(existingDish.getName(), dish);
+      } else {
+        controller.addDish(dish);
+      }
+
       saved = true;
       dispose();
     } catch (Exception ex) {

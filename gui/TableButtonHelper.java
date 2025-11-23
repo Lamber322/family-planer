@@ -12,50 +12,59 @@ import javax.swing.table.TableCellRenderer;
  * Содержит реализации рендерера и редактора для кнопок в ячейках таблицы.
  */
 public class TableButtonHelper {
-  /**
-   * Рендерер для отображения кнопки в ячейке таблицы.
-   */
+
   public static class ButtonRenderer extends JButton implements TableCellRenderer {
-    public ButtonRenderer(String text) {
-      super(text);
+    public ButtonRenderer(String defaultText) {
+      super(defaultText);
       setOpaque(true);
     }
 
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value,
         boolean isSelected, boolean hasFocus, int row, int column) {
+
+      if (value != null) {
+        setText(value.toString());
+      } else {
+        setText("Добавить");
+      }
       return this;
     }
   }
 
-  /**
-   * Редактор для обработки нажатий кнопки в ячейке таблицы.
-   */
   public static class ButtonEditor extends DefaultCellEditor {
     private final JButton button;
     private Runnable onClick;
 
-    /**
-     * Создает редактор кнопки с указанным текстом и обработчиком нажатия.
-     */
-    public ButtonEditor(JCheckBox checkBox, String text, Runnable onClick) {
+    public ButtonEditor(JCheckBox checkBox, String defaultText, Runnable onClick) {
       super(checkBox);
-      this.button = new JButton(text);
+      this.button = new JButton(defaultText);
       this.button.setOpaque(true);
       this.onClick = onClick;
-      this.button.addActionListener(e -> fireEditingStopped());
+      this.button.addActionListener(e -> {
+        if (onClick != null) {
+          onClick.run();
+        }
+        fireEditingStopped();
+      });
     }
 
     @Override
     public Component getTableCellEditorComponent(JTable table, Object value,
         boolean isSelected, int row, int column) {
+
+      if (value != null) {
+        button.setText(value.toString());
+      } else {
+        button.setText("Добавить");
+      }
       return button;
     }
 
     @Override
     public Object getCellEditorValue() {
-      onClick.run();
-      return "";
+
+      return button.getText();
     }
   }
 }

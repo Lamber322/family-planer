@@ -118,7 +118,7 @@ public class MenuRepository implements Serializable {
   }
 
   /**
-   * Добавляет и обновляет количество продукта.
+   * Добавляет количество продукта.
    * 
    */
   public void addProduct(String product, double quantity) {
@@ -129,6 +129,37 @@ public class MenuRepository implements Serializable {
       products.remove(product);
     } else {
       products.put(product, newAmount);
+    }
+    autoSave();
+  }
+
+  /**
+   * Обновляет количество продукта.
+   * 
+   */
+  public void updateProduct(String product, double newQuantity) {
+    if (newQuantity <= 0) {
+      products.remove(product);
+    } else {
+      products.put(product, newQuantity);
+    }
+    autoSave();
+  }
+
+  /**
+   * Обновляет существующее блюдо.
+   */
+  public void updateDish(String oldName, Dish updatedDish) {
+
+    dishes.removeIf(d -> d.getName().equals(oldName));
+    dishes.add(updatedDish);
+
+    for (Map<String, Dish> dayMenu : weeklyMenu.values()) {
+      for (Map.Entry<String, Dish> entry : dayMenu.entrySet()) {
+        if (entry.getValue() != null && entry.getValue().getName().equals(oldName)) {
+          dayMenu.put(entry.getKey(), updatedDish);
+        }
+      }
     }
     autoSave();
   }
@@ -191,6 +222,26 @@ public class MenuRepository implements Serializable {
           for (String mealType : mealTypes) {
             Dish dish = dayMenu.get(mealType);
             writer.write("  " + mealType + ": " + (dish != null ? dish.getName() : "Не выбрано"));
+            writer.newLine();
+
+            // Добавляем описание, если оно есть
+            if (dish != null && dish.getDescription() != null && !dish.getDescription().isEmpty()) {
+              writer.write("    Описание: " + dish.getDescription());
+              writer.newLine();
+            }
+
+            // Добавляем ингредиенты
+            if (dish != null && !dish.getIngredients().isEmpty()) {
+              writer.write("    Ингредиенты:");
+              writer.newLine();
+              for (Map.Entry<String, ProductQuantity> ingredient : dish.getIngredients().entrySet()) {
+                ProductQuantity pq = ingredient.getValue();
+                writer.write("      - " + ingredient.getKey() + ": "
+                    +
+                    pq.getAmount() + " " + pq.getUnit());
+                writer.newLine();
+              }
+            }
             writer.newLine();
           }
           writer.newLine();

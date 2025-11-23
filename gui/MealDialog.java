@@ -28,6 +28,13 @@ public class MealDialog extends AbstractDishDialog {
     this.day = day;
     this.mealType = mealType;
     this.productManagementPanel = productManagementPanel;
+
+    // Предзаполняем данные, если блюдо уже существует
+    Dish existingDish = controller.getMenuForDay(day, mealType);
+    if (existingDish != null) {
+      setDishData(existingDish);
+    }
+
     addSelectFavoriteButton();
   }
 

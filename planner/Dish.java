@@ -34,6 +34,14 @@ public class Dish implements Serializable {
     return description;
   }
 
+  public String getShortDescription() {
+    if (description == null || description.isEmpty()) {
+      return "";
+    }
+
+    return description.length() > 50 ? description.substring(0, 47) + "..." : description;
+  }
+
   public Map<String, ProductQuantity> getIngredients() {
     return new HashMap<>(ingredients);
   }
