@@ -18,6 +18,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import planner.Dish;
 import planner.MenuController;
@@ -25,14 +26,14 @@ import planner.MenuController;
 /**
  * Панель для отображения и управления недельным меню.
  * Позволяет выбирать день недели, просматривать и редактировать меню на
- * выбранный день,
- * а также экспортировать меню в файл.
+ * выбранный день, а также экспортировать меню в файл.
  */
 public class WeeklyMenuPanel extends JPanel {
   private final MenuController controller;
   private JComboBox<String> dayComboBox;
   private JTable menuTable;
   private JButton exportButton;
+  private DefaultTableModel tableModel;
 
   /**
    * Создает панель недельного меню с указанным контроллером.
@@ -63,27 +64,26 @@ public class WeeklyMenuPanel extends JPanel {
     dayPanel.add(dayComboBox);
     add(dayPanel, BorderLayout.NORTH);
 
-    dayComboBox.addActionListener(e -> {
-      updateMenuTable();
-    });
+    dayComboBox.addActionListener(e -> updateMenuTable());
   }
 
   private void setupMenuTable() {
     String[] columns = { "Прием пищи", "Блюдо", "Описание", "Действия" };
-    Object[][] data = {
-        { "Завтрак", "", "", "Добавить" },
-        { "Обед", "", "", "Добавить" },
-        { "Ужин", "", "", "Добавить" }
-    };
 
-    menuTable = new JTable(data, columns) {
+    tableModel = new DefaultTableModel(columns, 0) {
       @Override
       public boolean isCellEditable(int row, int column) {
-        return column == 3; // Только столбец "Действия" редактируемый
+        return column == 3;
+      }
+
+      @Override
+      public Class<?> getColumnClass(int column) {
+        return String.class;
       }
     };
 
-    // Настраиваем рендерер и редактор для кнопок
+    menuTable = new JTable(tableModel);
+
     TableColumn buttonColumn = menuTable.getColumnModel().getColumn(3);
     buttonColumn.setCellRenderer(new TableButtonHelper.ButtonRenderer(""));
     buttonColumn.setCellEditor(new TableButtonHelper.ButtonEditor(
@@ -91,21 +91,21 @@ public class WeeklyMenuPanel extends JPanel {
 
     menuTable.setRowHeight(30);
     add(new JScrollPane(menuTable), BorderLayout.CENTER);
+
+    initializeTableRows();
+  }
+
+  private void initializeTableRows() {
+    String[] mealTypes = { "Завтрак", "Обед", "Ужин" };
+    for (String mealType : mealTypes) {
+      tableModel.addRow(new Object[] { mealType, "", "", "Добавить" });
+    }
   }
 
   private void handleActionButton() {
     int row = menuTable.getSelectedRow();
     if (row >= 0) {
-      String mealType = (String) menuTable.getValueAt(row, 0);
-      String day = (String) dayComboBox.getSelectedItem();
-      showMealDialog(day, mealType);
-    }
-  }
-
-  private void handleEditButton() {
-    int row = menuTable.getSelectedRow();
-    if (row >= 0) {
-      String mealType = (String) menuTable.getValueAt(row, 0);
+      String mealType = (String) tableModel.getValueAt(row, 0);
       String day = (String) dayComboBox.getSelectedItem();
       showMealDialog(day, mealType);
     }
@@ -120,23 +120,27 @@ public class WeeklyMenuPanel extends JPanel {
 
   private void updateMenuTable() {
     String selectedDay = (String) dayComboBox.getSelectedItem();
-    for (int row = 0; row < menuTable.getRowCount(); row++) {
-      String mealType = (String) menuTable.getValueAt(row, 0);
+
+    for (int row = 0; row < tableModel.getRowCount(); row++) {
+      String mealType = (String) tableModel.getValueAt(row, 0);
       Dish dish = controller.getMenuForDay(selectedDay, mealType);
 
-      if (dish != null) {
-        menuTable.setValueAt(dish.getName(), row, 1);
-        menuTable.setValueAt(dish.getShortDescription(), row, 2);
-        menuTable.setValueAt("Изменить", row, 3);
-      } else {
-        menuTable.setValueAt("", row, 1);
-        menuTable.setValueAt("", row, 2);
-        menuTable.setValueAt("Добавить", row, 3);
-      }
+      String buttonText = (dish != null) ? "Изменить" : "Добавить";
+      String dishName = (dish != null) ? dish.getName() : "";
+      String description = (dish != null) ? dish.getShortDescription() : "";
+
+      tableModel.setValueAt(dishName, row, 1);
+      tableModel.setValueAt(description, row, 2);
+      tableModel.setValueAt(buttonText, row, 3);
     }
 
-    menuTable.revalidate();
+    tableModel.fireTableDataChanged();
     menuTable.repaint();
+
+    SwingUtilities.invokeLater(() -> {
+      menuTable.revalidate();
+      menuTable.repaint();
+    });
   }
 
   private void exportMenu() {
@@ -144,6 +148,7 @@ public class WeeklyMenuPanel extends JPanel {
     String filename = "exports/menu_export_" + timestamp + ".txt";
 
     try {
+      new java.io.File("exports").mkdirs();
       controller.exportMenuToFile(filename);
       JOptionPane.showMessageDialog(this,
           "Меню успешно экспортировано в файл:\n" + filename,
@@ -166,10 +171,13 @@ public class WeeklyMenuPanel extends JPanel {
     dialog.setVisible(true);
 
     if (dialog.isSaved()) {
-      updateMenuTable();
-      menuTable.repaint();
+      SwingUtilities.invokeLater(() -> {
+        updateMenuTable();
+        if (productPanel != null) {
+          productPanel.refreshTable();
+        }
+      });
     }
-
   }
 
   private ProductManagementPanel findProductManagementPanel() {
@@ -187,5 +195,9 @@ public class WeeklyMenuPanel extends JPanel {
       parent = parent.getParent();
     }
     return null;
+  }
+
+  public void refreshTable() {
+    updateMenuTable();
   }
 }

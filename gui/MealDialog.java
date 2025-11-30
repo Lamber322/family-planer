@@ -29,7 +29,6 @@ public class MealDialog extends AbstractDishDialog {
     this.mealType = mealType;
     this.productManagementPanel = productManagementPanel;
 
-    // Предзаполняем данные, если блюдо уже существует
     Dish existingDish = controller.getMenuForDay(day, mealType);
     if (existingDish != null) {
       setDishData(existingDish);
@@ -39,12 +38,18 @@ public class MealDialog extends AbstractDishDialog {
   }
 
   private void addSelectFavoriteButton() {
-    JPanel buttonPanel = (JPanel) getContentPane().getComponent(0);
-    JPanel innerPanel = (JPanel) buttonPanel.getComponent(1);
 
+    JPanel mainPanel = (JPanel) getContentPane().getComponent(0);
+
+    JPanel favoriteButtonPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
     JButton selectFavoriteButton = new JButton("Выбрать из избранного");
     selectFavoriteButton.addActionListener(e -> selectFromFavorites());
-    innerPanel.add(selectFavoriteButton, 0);
+    favoriteButtonPanel.add(selectFavoriteButton);
+
+    mainPanel.add(favoriteButtonPanel, java.awt.BorderLayout.NORTH);
+
+    mainPanel.revalidate();
+    mainPanel.repaint();
   }
 
   @Override
@@ -80,7 +85,7 @@ public class MealDialog extends AbstractDishDialog {
     List<Dish> favorites = controller.getAllDishes();
     if (favorites.isEmpty()) {
       JOptionPane.showMessageDialog(this,
-          "Нет избранных блюд", "Ошибка", JOptionPane.INFORMATION_MESSAGE);
+          "Нет избранных блюд", "Информация", JOptionPane.INFORMATION_MESSAGE);
       return;
     }
 
