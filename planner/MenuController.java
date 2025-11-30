@@ -13,7 +13,6 @@ public class MenuController {
 
   public MenuController(MenuRepository repository) {
     this.repository = repository;
-
   }
 
   public void addDish(Dish dish) {
@@ -75,27 +74,63 @@ public class MenuController {
   }
 
   /**
-   * Добавляет прием пищи (блюдо) в меню на указанный день.
-   * Автоматически уменьшает количество продуктов на складе.
+   * Добавляет блюдо в меню на указанный день.
    */
-  public boolean addMealToDay(String day, String mealType, Dish dish) {
-    if (!checkProductsAvailability(dish)) {
+  public boolean addMealToDay(String day, String mealType, Dish newDish) {
+    Dish currentDish = repository.getMenuForDay(day, mealType);
+
+    if (currentDish != null && currentDish.equals(newDish)) {
+      repository.setMenuForDay(day, mealType, newDish);
+      return true;
+    }
+
+    if (!checkProductsAvailability(newDish)) {
       JOptionPane.showMessageDialog(null,
           "Недостаточно продуктов для приготовления этого блюда",
           "Ошибка", JOptionPane.ERROR_MESSAGE);
       return false;
     }
 
-    deductProducts(dish);
-    repository.setMenuForDay(day, mealType, dish);
+    if (currentDish != null) {
+      returnProducts(currentDish);
+    }
+
+    deductProducts(newDish);
+    repository.setMenuForDay(day, mealType, newDish);
     return true;
   }
 
+  /**
+   * Возвращает продукты на склад (при удалении или изменении блюда).
+   */
+  private void returnProducts(Dish dish) {
+    dish.getIngredients().forEach((product, pq) -> {
+      double returnedAmount = pq.getUnit().convertToBaseUnit(pq.getAmount());
+      repository.addProduct(product, returnedAmount);
+    });
+  }
+
+  /**
+   * Вычитает продукты со склада для приготовления блюда.
+   */
   private void deductProducts(Dish dish) {
     dish.getIngredients().forEach((product, pq) -> {
       double requiredAmount = pq.getUnit().convertToBaseUnit(pq.getAmount());
       repository.addProduct(product, -requiredAmount);
     });
+  }
+
+  /**
+   * Удаляет блюдо из меню и возвращает продукты на склад.
+   */
+  public boolean removeMealFromDay(String day, String mealType) {
+    Dish currentDish = repository.getMenuForDay(day, mealType);
+    if (currentDish != null) {
+      returnProducts(currentDish);
+      repository.setMenuForDay(day, mealType, null);
+      return true;
+    }
+    return false;
   }
 
   public void exportProductsToFile(String filename) {
