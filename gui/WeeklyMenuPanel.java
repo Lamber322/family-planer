@@ -33,6 +33,7 @@ public class WeeklyMenuPanel extends JPanel {
   private JComboBox<String> dayComboBox;
   private JTable menuTable;
   private JButton exportButton;
+  private JButton clearDayButton;
   private DefaultTableModel tableModel;
 
   /**
@@ -46,7 +47,7 @@ public class WeeklyMenuPanel extends JPanel {
     initComponents();
     setupDaySelector();
     setupMenuTable();
-    setupExportButton();
+    setupActionButtons();
     updateMenuTable();
   }
 
@@ -56,6 +57,7 @@ public class WeeklyMenuPanel extends JPanel {
         "Четверг", "Пятница", "Суббота", "Воскресенье"
     });
     exportButton = new JButton("Экспорт меню");
+    clearDayButton = new JButton("Очистить день");
   }
 
   private void setupDaySelector() {
@@ -111,11 +113,42 @@ public class WeeklyMenuPanel extends JPanel {
     }
   }
 
-  private void setupExportButton() {
-    exportButton.addActionListener(e -> exportMenu());
+  private void setupActionButtons() {
     JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+
+    clearDayButton.addActionListener(e -> clearCurrentDay());
+    buttonPanel.add(clearDayButton);
+
+    exportButton.addActionListener(e -> exportMenu());
     buttonPanel.add(exportButton);
+
     add(buttonPanel, BorderLayout.SOUTH);
+  }
+
+  private void clearCurrentDay() {
+    String selectedDay = (String) dayComboBox.getSelectedItem();
+    if (selectedDay == null) {
+      return;
+    }
+    int result = JOptionPane.showConfirmDialog(this,
+        "Очистить меню на " + selectedDay + "?",
+        "Подтверждение очистки",
+        JOptionPane.YES_NO_OPTION,
+        JOptionPane.QUESTION_MESSAGE);
+
+    if (result == JOptionPane.YES_OPTION) {
+      String[] mealTypes = { "Завтрак", "Обед", "Ужин" };
+      for (String mealType : mealTypes) {
+        controller.getMenuPlanningService().setMenuForDay(selectedDay, mealType, null);
+      }
+
+      JOptionPane.showMessageDialog(this,
+          "Меню на " + selectedDay + " очищено",
+          "Очистка завершена",
+          JOptionPane.INFORMATION_MESSAGE);
+
+      updateMenuTable();
+    }
   }
 
   private void updateMenuTable() {

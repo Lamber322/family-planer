@@ -71,6 +71,13 @@ public class MenuController {
     return menuPlanningService.removeMealFromDay(day, mealType);
   }
 
+  /**
+   * Очищает меню на определенный день без возврата продуктов.
+   */
+  public void clearDayMenu(String day) {
+    menuPlanningService.clearDayMenu(day);
+  }
+
   public void addProduct(String product, double quantity) {
 
     productInventoryService.addProduct(product, new ProductQuantity(quantity, ProductUnit.GRAMS));

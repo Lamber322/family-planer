@@ -83,7 +83,7 @@ public class DishListPanel extends JPanel {
     int row = dishTable.getSelectedRow();
     if (row >= 0) {
       String dishName = (String) dishTable.getValueAt(row, 0);
-      int result = JOptionPane.showConfirmDialog(this, // Убрали javax.swing.
+      int result = JOptionPane.showConfirmDialog(this,
           "Удалить блюдо \"" + dishName + "\"?",
           "Подтверждение удаления",
           JOptionPane.YES_NO_OPTION);

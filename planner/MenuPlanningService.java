@@ -66,6 +66,20 @@ public class MenuPlanningService {
     return false;
   }
 
+  /**
+   * Очищает меню на определенный день без возврата продуктов.
+   */
+  public void clearDayMenu(String day) {
+    Map<String, Map<String, Dish>> weeklyMenu = repository.getWeeklyMenu();
+    if (weeklyMenu.containsKey(day)) {
+      Map<String, Dish> dayMenu = weeklyMenu.get(day);
+      dayMenu.put("Завтрак", null);
+      dayMenu.put("Обед", null);
+      dayMenu.put("Ужин", null);
+      repository.setWeeklyMenu(weeklyMenu);
+    }
+  }
+
   public Map<String, Map<String, Dish>> getWeeklyMenu() {
     return repository.getWeeklyMenu();
   }

@@ -131,7 +131,6 @@ public class ProductManagementPanel extends JPanel {
           return;
         }
 
-        // Используем новый метод с единицами измерения
         controller.addProduct(product, quantity, unit);
         productField.setText("");
         quantityField.setText("");
