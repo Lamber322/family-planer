@@ -15,8 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Репозиторий для хранения данных о меню и продуктах.
- * Обеспечивает доступ к списку блюд, недельному меню и количеству продуктов.
+ * Репозиторий для хранения данных о меню и продуктами.
  */
 public class MenuRepository implements Serializable {
   private static final long serialVersionUID = 1L;
@@ -24,11 +23,8 @@ public class MenuRepository implements Serializable {
 
   private List<Dish> dishes = new ArrayList<>();
   private Map<String, Map<String, Dish>> weeklyMenu = new HashMap<>();
-  private Map<String, Double> products = new HashMap<>();
+  private Map<String, ProductQuantity> products = new HashMap<>();
 
-  /**
-   * Инициализация для стандартных дней недели.
-   */
   public MenuRepository() {
     initializeDays();
     autoLoad();
@@ -43,7 +39,7 @@ public class MenuRepository implements Serializable {
   }
 
   /**
-   * Автоматически сохраняет все данные приложения.
+   * Автоматически сохраняет данные в файл.
    */
   public void autoSave() {
     try {
@@ -51,7 +47,6 @@ public class MenuRepository implements Serializable {
       try (ObjectOutputStream oos = new ObjectOutputStream(
           new FileOutputStream(AUTO_SAVE_FILE))) {
 
-        // Сохраняем все данные
         oos.writeObject(dishes);
         oos.writeObject(weeklyMenu);
         oos.writeObject(products);
@@ -63,8 +58,9 @@ public class MenuRepository implements Serializable {
   }
 
   /**
-   * Загружает автоматически сохраненные данные.
+   * Автоматически загружает данные из файла автосохранения.
    */
+
   @SuppressWarnings("unchecked")
   public void autoLoad() {
     File saveFile = new File(AUTO_SAVE_FILE);
@@ -76,21 +72,45 @@ public class MenuRepository implements Serializable {
     try (ObjectInputStream ois = new ObjectInputStream(
         new FileInputStream(AUTO_SAVE_FILE))) {
 
-      // Загружаем данные
       dishes = (List<Dish>) ois.readObject();
       weeklyMenu = (Map<String, Map<String, Dish>>) ois.readObject();
-      products = (Map<String, Double>) ois.readObject();
+
+      Object productsData = ois.readObject();
+      if (productsData instanceof Map) {
+        Map<?, ?> rawProducts = (Map<?, ?>) productsData;
+        products = new HashMap<>();
+
+        for (Map.Entry<?, ?> entry : rawProducts.entrySet()) {
+          if (entry.getKey() instanceof String) {
+            String productName = (String) entry.getKey();
+            if (entry.getValue() instanceof Double) {
+              double amount = (Double) entry.getValue();
+              products.put(productName, new ProductQuantity(amount, ProductUnit.GRAMS));
+            } else if (entry.getValue() instanceof ProductQuantity) {
+              products.put(productName, (ProductQuantity) entry.getValue());
+            }
+          }
+        }
+      }
 
       System.out.println("Данные автоматически загружены");
 
     } catch (IOException | ClassNotFoundException e) {
       System.err.println("Ошибка загрузки данных: " + e.getMessage());
-      // Инициализируем пустые данные в случае ошибки
       dishes = new ArrayList<>();
       weeklyMenu = new HashMap<>();
       products = new HashMap<>();
       initializeDays();
     }
+  }
+
+  public List<Dish> getDishes() {
+    return new ArrayList<>(dishes);
+  }
+
+  public void setDishes(List<Dish> dishes) {
+    this.dishes = new ArrayList<>(dishes);
+    autoSave();
   }
 
   public void addDish(Dish dish) {
@@ -107,6 +127,15 @@ public class MenuRepository implements Serializable {
     return new ArrayList<>(dishes);
   }
 
+  public Map<String, Map<String, Dish>> getWeeklyMenu() {
+    return new HashMap<>(weeklyMenu);
+  }
+
+  public void setWeeklyMenu(Map<String, Map<String, Dish>> weeklyMenu) {
+    this.weeklyMenu = new HashMap<>(weeklyMenu);
+    autoSave();
+  }
+
   public void setMenuForDay(String day, String mealType, Dish dish) {
     weeklyMenu.computeIfAbsent(day, k -> new HashMap<>()).put(mealType, dish);
     autoSave();
@@ -117,28 +146,29 @@ public class MenuRepository implements Serializable {
     return dayMenu != null ? dayMenu.get(mealType) : null;
   }
 
-  /**
-   * Добавляет количество продукта.
-   * 
-   */
-  public void addProduct(String product, double quantity) {
-    double currentAmount = products.getOrDefault(product, 0.0);
-    double newAmount = currentAmount + quantity;
+  public Map<String, ProductQuantity> getProducts() {
+    return new HashMap<>(products);
+  }
 
-    if (newAmount <= 0) {
-      products.remove(product);
-    } else {
-      products.put(product, newAmount);
-    }
+  public Map<String, ProductQuantity> getAllProducts() {
+    return new HashMap<>(products);
+  }
+
+  public void setProducts(Map<String, ProductQuantity> products) {
+    this.products = new HashMap<>(products);
+    autoSave();
+  }
+
+  public void addProduct(String product, ProductQuantity quantity) {
+    products.put(product, quantity);
     autoSave();
   }
 
   /**
-   * Обновляет количество продукта.
-   * 
+   * Обновляет продукты в системе.
    */
-  public void updateProduct(String product, double newQuantity) {
-    if (newQuantity <= 0) {
+  public void updateProduct(String product, ProductQuantity newQuantity) {
+    if (newQuantity.getAmount() <= 0) {
       products.remove(product);
     } else {
       products.put(product, newQuantity);
@@ -147,10 +177,9 @@ public class MenuRepository implements Serializable {
   }
 
   /**
-   * Обновляет существующее блюдо.
+   * Обновляет блюдо в системе.
    */
   public void updateDish(String oldName, Dish updatedDish) {
-
     dishes.removeIf(d -> d.getName().equals(oldName));
     dishes.add(updatedDish);
 
@@ -169,13 +198,8 @@ public class MenuRepository implements Serializable {
     autoSave();
   }
 
-  public Map<String, Double> getAllProducts() {
-    return new HashMap<>(products);
-  }
-
   /**
-   * Проверяет, достаточно ли продуктов для приготовления блюда.
-   * 
+   * Проверяет доступность продуктов для приготовления блюда.
    */
   public boolean checkProductsAvailability(Dish dish) {
     for (Map.Entry<String, ProductQuantity> ingredient : dish.getIngredients().entrySet()) {
@@ -183,7 +207,13 @@ public class MenuRepository implements Serializable {
       ProductQuantity pq = ingredient.getValue();
       double requiredAmount = pq.getUnit().convertToBaseUnit(pq.getAmount());
 
-      if (!products.containsKey(product) || products.get(product) < requiredAmount) {
+      ProductQuantity available = products.get(product);
+      if (available == null) {
+        return false;
+      }
+
+      double availableAmount = available.getUnit().convertToBaseUnit(available.getAmount());
+      if (availableAmount < requiredAmount) {
         return false;
       }
     }
@@ -195,8 +225,9 @@ public class MenuRepository implements Serializable {
    */
   public void exportProductsToFile(String filename) {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
-      for (Map.Entry<String, Double> entry : products.entrySet()) {
-        writer.write(entry.getKey() + ": " + entry.getValue() + " г/мл");
+      for (Map.Entry<String, ProductQuantity> entry : products.entrySet()) {
+        ProductQuantity pq = entry.getValue();
+        writer.write(entry.getKey() + ": " + pq.getAmount() + " " + pq.getUnit());
         writer.newLine();
       }
     } catch (IOException e) {
@@ -224,21 +255,19 @@ public class MenuRepository implements Serializable {
             writer.write("  " + mealType + ": " + (dish != null ? dish.getName() : "Не выбрано"));
             writer.newLine();
 
-            // Добавляем описание, если оно есть
             if (dish != null && dish.getDescription() != null && !dish.getDescription().isEmpty()) {
               writer.write("    Описание: " + dish.getDescription());
               writer.newLine();
             }
 
-            // Добавляем ингредиенты
             if (dish != null && !dish.getIngredients().isEmpty()) {
               writer.write("    Ингредиенты:");
               writer.newLine();
-              for (Map.Entry<String, ProductQuantity> ingredient : dish.getIngredients().entrySet()) {
+              for (Map.Entry<String, ProductQuantity> ingredient : dish.getIngredients()
+                  .entrySet()) {
                 ProductQuantity pq = ingredient.getValue();
                 writer.write("      - " + ingredient.getKey() + ": "
-                    +
-                    pq.getAmount() + " " + pq.getUnit());
+                    + pq.getAmount() + " " + pq.getUnit());
                 writer.newLine();
               }
             }

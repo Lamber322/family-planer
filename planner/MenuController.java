@@ -6,134 +6,143 @@ import javax.swing.JOptionPane;
 
 /**
  * Контроллер для управления меню и продуктами.
- * Служит посредником между репозиторием данных и пользовательским интерфейсом.
  */
 public class MenuController {
   private final MenuRepository repository;
+  private final DishService dishService;
+  private final MenuPlanningService menuPlanningService;
+  private final ProductInventoryService productInventoryService;
+  private final ExportService exportService;
 
+  /**
+   * Конструктор контроллера меню.
+   */
   public MenuController(MenuRepository repository) {
     this.repository = repository;
+    this.dishService = new DishService(repository);
+    this.productInventoryService = new ProductInventoryService(repository);
+    this.menuPlanningService = new MenuPlanningService(repository, productInventoryService);
+    this.exportService = new ExportService(repository);
   }
 
   public void addDish(Dish dish) {
-    repository.addDish(dish);
+    dishService.addDish(dish);
   }
 
   public void updateDish(String oldName, Dish updatedDish) {
-    repository.updateDish(oldName, updatedDish);
+    dishService.updateDish(oldName, updatedDish);
   }
 
-  /**
-   * Находит блюдо по имени.
-   */
   public Dish findDishByName(String name) {
-    return repository.getAllDishes().stream()
-        .filter(d -> d.getName().equals(name))
-        .findFirst()
-        .orElse(null);
+    return dishService.findDishByName(name);
   }
 
   public void removeDish(String dishName) {
-    repository.removeDish(dishName);
+    dishService.removeDish(dishName);
   }
 
   public List<Dish> getAllDishes() {
-    return repository.getAllDishes();
+    return dishService.getAllDishes();
   }
 
   public void setMenuForDay(String day, String mealType, Dish dish) {
-    repository.setMenuForDay(day, mealType, dish);
+    menuPlanningService.setMenuForDay(day, mealType, dish);
   }
 
   public Dish getMenuForDay(String day, String mealType) {
-    return repository.getMenuForDay(day, mealType);
-  }
-
-  public void addProduct(String product, double quantity) {
-    repository.addProduct(product, quantity);
-  }
-
-  public void updateProduct(String product, double newQuantity) {
-    repository.updateProduct(product, newQuantity);
-  }
-
-  public void removeProduct(String product) {
-    repository.removeProduct(product);
-  }
-
-  public Map<String, Double> getAllProducts() {
-    return repository.getAllProducts();
-  }
-
-  public boolean checkProductsAvailability(Dish dish) {
-    return repository.checkProductsAvailability(dish);
-  }
-
-  public void exportMenuToFile(String filename) {
-    repository.exportMenuToFile(filename);
+    return menuPlanningService.getMenuForDay(day, mealType);
   }
 
   /**
-   * Добавляет блюдо в меню на указанный день.
+   * Добавляет блюдо в меню дня с проверкой доступности продуктов.
+   * 
    */
-  public boolean addMealToDay(String day, String mealType, Dish newDish) {
-    Dish currentDish = repository.getMenuForDay(day, mealType);
-
-    if (currentDish != null && currentDish.equals(newDish)) {
-      repository.setMenuForDay(day, mealType, newDish);
-      return true;
-    }
-
-    if (!checkProductsAvailability(newDish)) {
+  public boolean addMealToDay(String day, String mealType, Dish dish) {
+    boolean success = menuPlanningService.addMealToDay(day, mealType, dish);
+    if (!success) {
       JOptionPane.showMessageDialog(null,
           "Недостаточно продуктов для приготовления этого блюда",
           "Ошибка", JOptionPane.ERROR_MESSAGE);
-      return false;
     }
-
-    if (currentDish != null) {
-      returnProducts(currentDish);
-    }
-
-    deductProducts(newDish);
-    repository.setMenuForDay(day, mealType, newDish);
-    return true;
+    return success;
   }
 
-  /**
-   * Возвращает продукты на склад (при удалении или изменении блюда).
-   */
-  private void returnProducts(Dish dish) {
-    dish.getIngredients().forEach((product, pq) -> {
-      double returnedAmount = pq.getUnit().convertToBaseUnit(pq.getAmount());
-      repository.addProduct(product, returnedAmount);
-    });
-  }
-
-  /**
-   * Вычитает продукты со склада для приготовления блюда.
-   */
-  private void deductProducts(Dish dish) {
-    dish.getIngredients().forEach((product, pq) -> {
-      double requiredAmount = pq.getUnit().convertToBaseUnit(pq.getAmount());
-      repository.addProduct(product, -requiredAmount);
-    });
-  }
-
-  /**
-   * Удаляет блюдо из меню и возвращает продукты на склад.
-   */
   public boolean removeMealFromDay(String day, String mealType) {
-    Dish currentDish = repository.getMenuForDay(day, mealType);
-    if (currentDish != null) {
-      returnProducts(currentDish);
-      repository.setMenuForDay(day, mealType, null);
-      return true;
-    }
-    return false;
+    return menuPlanningService.removeMealFromDay(day, mealType);
   }
 
+  public void addProduct(String product, double quantity) {
+
+    productInventoryService.addProduct(product, new ProductQuantity(quantity, ProductUnit.GRAMS));
+  }
+
+  public void addProduct(String product, double quantity, ProductUnit unit) {
+    productInventoryService.addProduct(product, new ProductQuantity(quantity, unit));
+  }
+
+  /**
+   * Обновляет количество продукта в граммах.
+   * 
+   */
+  public void updateProduct(String product, double newQuantity) {
+
+    ProductQuantity existing = productInventoryService.getProduct(product);
+    ProductUnit unit = (existing != null) ? existing.getUnit() : ProductUnit.GRAMS;
+    productInventoryService.updateProduct(product, new ProductQuantity(newQuantity, unit));
+  }
+
+  public void updateProduct(String product, double quantity, ProductUnit unit) {
+    productInventoryService.updateProduct(product, new ProductQuantity(quantity, unit));
+  }
+
+  public void removeProduct(String product) {
+    productInventoryService.removeProduct(product);
+  }
+
+  public Map<String, ProductQuantity> getAllProducts() {
+    return productInventoryService.getAllProducts();
+  }
+
+  public boolean checkProductsAvailability(Dish dish) {
+    return productInventoryService.checkProductsAvailability(dish);
+  }
+
+  /**
+   * Экспортирует меню в файл.
+   * 
+   */
+  public void exportMenuToFile(String filename) {
+    try {
+      exportService.exportMenuToFile(filename);
+    } catch (Exception ex) {
+      throw new RuntimeException("Ошибка при экспорте меню: " + ex.getMessage(), ex);
+    }
+  }
+
+  /**
+   * Экспортирует список продуктов в файл.
+   */
   public void exportProductsToFile(String filename) {
-    repository.exportProductsToFile(filename);
+    try {
+      exportService.exportProductsToFile(filename);
+    } catch (Exception ex) {
+      throw new RuntimeException("Ошибка при экспорте продуктов: " + ex.getMessage(), ex);
+    }
+  }
+
+  public DishService getDishService() {
+    return dishService;
+  }
+
+  public MenuPlanningService getMenuPlanningService() {
+    return menuPlanningService;
+  }
+
+  public ProductInventoryService getProductInventoryService() {
+    return productInventoryService;
+  }
+
+  public ExportService getExportService() {
+    return exportService;
   }
 }

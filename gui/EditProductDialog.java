@@ -13,6 +13,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import planner.MenuController;
 import planner.NumberParser;
+import planner.ProductQuantity;
 import planner.ProductUnit;
 
 /**
@@ -27,10 +28,10 @@ public class EditProductDialog extends JDialog {
   private JComboBox<ProductUnit> unitCombo;
 
   /**
-   * Конструктор для создания диалогового окна редактирования продукта.
+   * Создает диалоговое окно для редактирования продукта.
    */
   public EditProductDialog(Frame parent, MenuController controller,
-      String productName, double currentQuantity) {
+      String productName, ProductQuantity currentQuantity) {
     super(parent, "Редактирование продукта: " + productName, true);
     this.controller = controller;
     this.productName = productName;
@@ -39,9 +40,10 @@ public class EditProductDialog extends JDialog {
     layoutComponents();
   }
 
-  private void initComponents(double currentQuantity) {
-    quantityField = new JTextField(String.valueOf(currentQuantity), 10);
+  private void initComponents(ProductQuantity currentQuantity) {
+    quantityField = new JTextField(String.valueOf(currentQuantity.getAmount()), 10);
     unitCombo = new JComboBox<>(ProductUnit.values());
+    unitCombo.setSelectedItem(currentQuantity.getUnit());
   }
 
   private void layoutComponents() {
@@ -85,9 +87,7 @@ public class EditProductDialog extends JDialog {
         return;
       }
 
-      double baseQuantity = unit.convertToBaseUnit(quantity);
-      controller.updateProduct(productName, baseQuantity);
-
+      controller.updateProduct(productName, quantity, unit);
       saved = true;
       dispose();
 

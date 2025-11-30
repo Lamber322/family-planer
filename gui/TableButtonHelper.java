@@ -12,7 +12,10 @@ import javax.swing.table.TableCellRenderer;
  * Содержит реализации рендерера и редактора для кнопок в ячейках таблицы.
  */
 public class TableButtonHelper {
-
+  /**
+   * Рендер для отображения кнопок в ячейках таблицы.
+   * 
+   */
   public static class ButtonRenderer extends JButton implements TableCellRenderer {
     public ButtonRenderer(String defaultText) {
       super(defaultText);
@@ -32,18 +35,27 @@ public class TableButtonHelper {
     }
   }
 
+  /**
+   * Редактор для обработки нажатий кнопок в ячейках таблицы.
+   * 
+   */
+
   public static class ButtonEditor extends DefaultCellEditor {
     private final JButton button;
     private Runnable onClick;
 
+    /**
+     * Инициализирует кнопку и настраивает обработчик событий.
+     * 
+     */
     public ButtonEditor(JCheckBox checkBox, String defaultText, Runnable onClick) {
       super(checkBox);
       this.button = new JButton(defaultText);
       this.button.setOpaque(true);
       this.onClick = onClick;
       this.button.addActionListener(e -> {
-        if (onClick != null) {
-          onClick.run();
+        if (this.onClick != null) {
+          this.onClick.run();
         }
         fireEditingStopped();
       });
@@ -66,5 +78,6 @@ public class TableButtonHelper {
 
       return button.getText();
     }
+
   }
 }

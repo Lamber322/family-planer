@@ -34,6 +34,9 @@ public class Dish implements Serializable {
     return description;
   }
 
+  /**
+   * Возвращает сокращенное описание блюда для отображения в таблицах и списках.
+   */
   public String getShortDescription() {
     if (description == null || description.isEmpty()) {
       return "";

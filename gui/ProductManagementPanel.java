@@ -22,11 +22,12 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import planner.MenuController;
 import planner.NumberParser;
+import planner.ProductQuantity;
 import planner.ProductUnit;
 
 /**
  * Панель для управления списком продуктов.
- * Позволяет добавлять, удалять, редактировать и просматривать продукты.
+ * Теперь отображает продукты в исходных единицах измерения.
  */
 public class ProductManagementPanel extends JPanel {
   private MenuController controller;
@@ -55,7 +56,7 @@ public class ProductManagementPanel extends JPanel {
           return Double.class;
         }
         if (column == 2) {
-          return ProductUnit.class;
+          return String.class;
         }
         return String.class;
       }
@@ -85,13 +86,15 @@ public class ProductManagementPanel extends JPanel {
     int row = productTable.getSelectedRow();
     if (row >= 0) {
       String product = (String) tableModel.getValueAt(row, 0);
-      Double currentQuantity = (Double) tableModel.getValueAt(row, 1);
+      ProductQuantity currentQuantity = controller.getAllProducts().get(product);
 
       EditProductDialog dialog = new EditProductDialog(
           (Frame) SwingUtilities.getWindowAncestor(this),
           controller, product, currentQuantity);
       dialog.setVisible(true);
-      refreshTable();
+      if (dialog.isSaved()) {
+        refreshTable();
+      }
     }
   }
 
@@ -112,7 +115,7 @@ public class ProductManagementPanel extends JPanel {
   }
 
   private void setupInputPanel() {
-    JPanel inputPanel = new JPanel(new GridLayout(1, 4));
+    JPanel inputPanel = new JPanel(new GridLayout(1, 6));
     JTextField productField = new JTextField();
     JTextField quantityField = new JTextField();
     JComboBox<ProductUnit> unitCombo = new JComboBox<>(ProductUnit.values());
@@ -128,7 +131,8 @@ public class ProductManagementPanel extends JPanel {
           return;
         }
 
-        controller.addProduct(product, unit.convertToBaseUnit(quantity));
+        // Используем новый метод с единицами измерения
+        controller.addProduct(product, quantity, unit);
         productField.setText("");
         quantityField.setText("");
         refreshTable();
@@ -170,8 +174,17 @@ public class ProductManagementPanel extends JPanel {
     exportButton.addActionListener(e -> {
       String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
       String filename = "exports/products_export_" + timestamp + ".txt";
-      controller.exportProductsToFile(filename);
-      JOptionPane.showMessageDialog(this, "Продукты экспортированы в " + filename);
+      try {
+        new File("exports").mkdirs();
+        controller.exportProductsToFile(filename);
+        JOptionPane.showMessageDialog(this,
+            "Продукты экспортированы в " + filename,
+            "Экспорт завершен", JOptionPane.INFORMATION_MESSAGE);
+      } catch (Exception ex) {
+        JOptionPane.showMessageDialog(this,
+            "Ошибка при экспорте: " + ex.getMessage(),
+            "Ошибка", JOptionPane.ERROR_MESSAGE);
+      }
     });
     actionPanel.add(exportButton);
 
@@ -202,11 +215,12 @@ public class ProductManagementPanel extends JPanel {
 
   void refreshTable() {
     tableModel.setRowCount(0);
-    for (Map.Entry<String, Double> entry : controller.getAllProducts().entrySet()) {
+    for (Map.Entry<String, ProductQuantity> entry : controller.getAllProducts().entrySet()) {
+      ProductQuantity pq = entry.getValue();
       tableModel.addRow(new Object[] {
           entry.getKey(),
-          entry.getValue(),
-          ProductUnit.GRAMS,
+          pq.getAmount(),
+          pq.getUnit().toString(),
           "Редактировать",
           "Удалить"
       });

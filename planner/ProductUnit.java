@@ -25,7 +25,6 @@ public enum ProductUnit {
 
   /**
    * Конвертирует указанное количество в базовую единицу измерения.
-   * 
    */
   public double convertToBaseUnit(double amount) {
     switch (this) {
@@ -41,8 +40,23 @@ public enum ProductUnit {
   }
 
   /**
+   * Конвертирует из базовой единицы в текущую.
+   */
+  public double convertFromBaseUnit(double baseAmount) {
+    switch (this) {
+      case KILOGRAMS:
+        return baseAmount / 1000;
+      case LITERS:
+        return baseAmount / 1000;
+      case TABLESPOONS:
+        return baseAmount / 15;
+      default:
+        return baseAmount;
+    }
+  }
+
+  /**
    * Возвращает единицу измерения по её строковому представлению.
-   * 
    */
   public static ProductUnit fromString(String text) {
     for (ProductUnit unit : ProductUnit.values()) {
